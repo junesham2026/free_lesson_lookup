@@ -295,12 +295,36 @@
         let currentPeriodId = null;
         let scheduleData = {}; // Store generated schedule
 
+        function showNotification(message, type = 'blue') {
+            const notification = document.createElement('div');
+            let bgColor = 'bg-gray-800';
+            if (type === 'green') bgColor = 'bg-green-600';
+            if (type === 'red') bgColor = 'bg-red-600';
+            
+            notification.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-y-full opacity-0 flex items-center gap-2`;
+            notification.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                ${message}
+            `;
+            
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.classList.remove('translate-y-full', 'opacity-0');
+            }, 10);
+            
+            setTimeout(() => {
+                notification.classList.add('translate-y-full', 'opacity-0');
+                setTimeout(() => notification.remove(), 300);
+            }, 3500);
+        }
+
         function handleExcelUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            // Show loading notification
-            showNotification('正在解析全校課表...', 'blue');
+            showNotification('正在解析全校直向課表...', 'blue');
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -308,18 +332,16 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     
-                    // Assume first sheet contains the master timetable
                     const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     
-                    // Convert to array of objects
-                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    // Read as an array of arrays (header: 1) to inspect rows and columns directly
+                    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
                     
-                    if (json.length > 0) {
-                        processImportedData(json);
-                        showNotification('課表匯入成功！已更新老師空堂資料。', 'green');
+                    if (rows && rows.length > 1) {
+                        processVerticalImportedData(rows);
+                        showNotification('課表匯入成功！已更新直向老師空堂資料。', 'green');
                         
-                        // Reset selection and UI
                         currentPeriodId = null;
                         renderPeriods();
                         updateHeaderDisplay();
@@ -327,7 +349,7 @@
                         document.getElementById('teachers-grid').classList.add('hidden');
                         document.getElementById('stats-panel').classList.add('hidden');
                     } else {
-                        showNotification('檔案為空，請檢查格式。', 'red');
+                        showNotification('檔案格式錯誤或為空。', 'red');
                     }
                 } catch (error) {
                     console.error(error);
@@ -337,123 +359,143 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function processImportedData(data) {
+        function processVerticalImportedData(rows) {
+            // Rows format:
+            // Row 0 (or Header): First column might be empty/time label, columns 1+ are Teacher Names
+            // Subsequent rows: First column is Time/Period label (e.g., 星期一 早會前 7:30, 星期一 第1節 ... up to 星期五 放學當值)
+            
+            let teacherNames = [];
+            let teacherColMap = {}; // colIndex -> teacherId
             let newTeachers = [];
             let newScheduleData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
 
-            data.forEach((row, index) => {
-                // Heuristic: Find name column (usually labeled 姓名, 老師, Name, or just the first key)
-                let keys = Object.keys(row);
-                let nameKey = keys.find(k => k.includes('姓名') || k.includes('老師') || k.includes('Name')) || keys[0];
-                let teacherName = row[nameKey];
-                
-                // Skip empty rows or header artifacts
-                if (!teacherName || typeof teacherName !== 'string' || teacherName.length > 10) return;
-
-                let tId = 't_imported_' + index;
-                let role = row['職位'] || row['Role'] || '老師';
-                
-                let teacherObj = {
-                    id: tId,
-                    name: String(teacherName).trim(),
-                    role: role,
-                    subjects: [],
-                    classes: []
-                };
-                newTeachers.push(teacherObj);
-
-                // Initialize empty schedule for this teacher
-                for (let d = 1; d <= 5; d++) {
-                    newScheduleData[d][tId] = { stats: { classes: 0, leaves: 0, subs: 0 } };
-                    PERIODS.forEach(p => {
-                        newScheduleData[d][tId][p.id] = p.isBreak ? 'break' : 'free'; // Default free
-                    });
+            // Find header row containing teacher names (usually row 0 or 1)
+            let headerRowIndex = 0;
+            for (let r = 0; r < Math.min(rows.length, 3); r++) {
+                let nonEmpCount = rows[r].filter(cell => String(cell).trim() !== '').length;
+                if (nonEmpCount > 2) {
+                    headerRowIndex = r;
+                    break;
                 }
+            }
 
-                // Analyze columns to map to periods
-                keys.forEach(key => {
-                    let val = String(row[key]).trim();
-                    if (!val || val === '空' || val.toLowerCase() === 'free') return; // Cell is empty = free
+            const headerRow = rows[headerRowIndex];
+            
+            // Map columns to teachers (starting from column index 1 or wherever names begin)
+            for (let c = 1; c < headerRow.length; c++) {
+                let name = String(headerRow[c]).trim();
+                if (name) {
+                    let tId = 't_imp_' + c;
+                    teacherColMap[c] = tId;
+                    
+                    let teacherObj = {
+                        id: tId,
+                        name: name,
+                        role: '老師',
+                        subjects: ['全科'],
+                        classes: []
+                    };
+                    newTeachers.push(teacherObj);
 
-                    // Determine Day
-                    let dayMatch = -1;
-                    if (key.includes('一') || key.includes('Mon')) dayMatch = 1;
-                    else if (key.includes('二') || key.includes('Tue')) dayMatch = 2;
-                    else if (key.includes('三') || key.includes('Wed')) dayMatch = 3;
-                    else if (key.includes('四') || key.includes('Thu')) dayMatch = 4;
-                    else if (key.includes('五') || key.includes('Fri')) dayMatch = 5;
+                    // Initialize schedule for this teacher
+                    for (let d = 1; d <= 5; d++) {
+                        newScheduleData[d][tId] = { stats: { classes: 0, leaves: 0, subs: 0 } };
+                        PERIODS.forEach(p => {
+                            newScheduleData[d][tId][p.id] = p.isBreak ? 'break' : 'free';
+                        });
+                    }
+                }
+            }
 
-                    if (dayMatch !== -1) {
-                        // Determine Period ID
-                        let pIdMatch = null;
-                        const keyStr = String(key).toLowerCase();
+            if (newTeachers.length === 0) {
+                throw new Error("找不到老師姓名列");
+            }
+
+            // Track daily stats
+            let dailyClassCounts = {};
+            let dailyLeaveCounts = {};
+            let dailySubCounts = {};
+            newTeachers.forEach(t => {
+                for (let d = 1; d <= 5; d++) {
+                    newScheduleData[d][t.id].stats = { classes: 0, leaves: 0, subs: 0 };
+                }
+            });
+
+            // Loop through remaining rows for time periods and schedules
+            let currentDayDetected = 1;
+
+            for (let r = headerRowIndex + 1; r < rows.length; r++) {
+                let row = rows[r];
+                let timeLabel = String(row[0] || '').trim();
+                
+                if (!timeLabel) continue;
+
+                // Detect current day from label (e.g. "星期一", "Mon", "一")
+                if (timeLabel.includes('星期二') || timeLabel.includes('週二') || timeLabel.includes('二')) currentDayDetected = 2;
+                else if (timeLabel.includes('星期三') || timeLabel.includes('週三') || timeLabel.includes('三')) currentDayDetected = 3;
+                else if (timeLabel.includes('星期四') || timeLabel.includes('週四') || timeLabel.includes('四')) currentDayDetected = 4;
+                else if (timeLabel.includes('星期五') || timeLabel.includes('週五') || timeLabel.includes('五')) currentDayDetected = 5;
+                else if (timeLabel.includes('星期一') || timeLabel.includes('週一') || timeLabel.includes('一')) currentDayDetected = 1;
+
+                // Match timeLabel to Period ID
+                let pIdMatch = null;
+                const tl = timeLabel.toLowerCase();
+                
+                if (tl.includes('7:30')) pIdMatch = 'pre_assembly_1';
+                else if (tl.includes('7:45')) pIdMatch = 'pre_assembly_2';
+                else if (tl.includes('早會') || tl.includes('班主任')) pIdMatch = 'assembly';
+                else if (tl.includes('1') || tl.includes('p1')) pIdMatch = 'p1';
+                else if (tl.includes('2') || tl.includes('p2')) pIdMatch = 'p2';
+                else if (tl.includes('3') || tl.includes('p3')) pIdMatch = 'p3';
+                else if (tl.includes('4') || tl.includes('p4')) pIdMatch = 'p4';
+                else if (tl.includes('5') || tl.includes('p5')) pIdMatch = 'p5';
+                else if (tl.includes('6') || tl.includes('p6')) pIdMatch = 'p6';
+                else if (tl.includes('7') || tl.includes('p7')) pIdMatch = 'p7';
+                else if (tl.includes('8') || tl.includes('p8')) pIdMatch = 'p8';
+                else if (tl.includes('9') || tl.includes('p9')) pIdMatch = 'p9';
+                else if (tl.includes('10') || tl.includes('p10')) pIdMatch = 'p10';
+                else if (tl.includes('放學') || tl.includes('當值')) pIdMatch = 'after_school';
+
+                if (pIdMatch && !PERIODS.find(p => p.id === pIdMatch).isBreak) {
+                    // Check each teacher's column value
+                    for (let c = 1; c < row.length; c++) {
+                        let tId = teacherColMap[c];
+                        if (!tId) continue;
+
+                        let cellVal = String(row[c]).trim();
                         
-                        if (keyStr.includes('7:30')) pIdMatch = 'pre_assembly_1';
-                        else if (keyStr.includes('7:45')) pIdMatch = 'pre_assembly_2';
-                        else if (keyStr.includes('早會') || keyStr.includes('班主任')) pIdMatch = 'assembly';
-                        else if (keyStr.includes('1') || keyStr.includes('p1')) pIdMatch = 'p1';
-                        else if (keyStr.includes('2') || keyStr.includes('p2')) pIdMatch = 'p2';
-                        else if (keyStr.includes('3') || keyStr.includes('p3')) pIdMatch = 'p3';
-                        else if (keyStr.includes('4') || keyStr.includes('p4')) pIdMatch = 'p4';
-                        else if (keyStr.includes('5') || keyStr.includes('p5')) pIdMatch = 'p5';
-                        else if (keyStr.includes('6') || keyStr.includes('p6')) pIdMatch = 'p6';
-                        else if (keyStr.includes('7') || keyStr.includes('p7')) pIdMatch = 'p7';
-                        else if (keyStr.includes('8') || keyStr.includes('p8')) pIdMatch = 'p8';
-                        else if (keyStr.includes('9') || keyStr.includes('p9')) pIdMatch = 'p9';
-                        else if (keyStr.includes('10') || keyStr.includes('p10')) pIdMatch = 'p10';
-                        else if (keyStr.includes('放學') || keyStr.includes('當值')) pIdMatch = 'after_school';
+                        // If cell is empty, it's a 吉節 (free)
+                        if (cellVal === '' || cellVal === '吉' || cellVal.toLowerCase() === 'free' || cellVal === '吉節') {
+                            newScheduleData[currentDayDetected][tId][pIdMatch] = 'free';
+                        } else if (cellVal.includes('假') || cellVal.includes('Sick')) {
+                            newScheduleData[currentDayDetected][tId][pIdMatch] = 'leave';
+                            newScheduleData[currentDayDetected][tId].stats.leaves++;
+                        } else if (cellVal.includes('代')) {
+                            newScheduleData[currentDayDetected][tId][pIdMatch] = 'subbing';
+                            newScheduleData[currentDayDetected][tId].stats.subs++;
+                            
+                            let teacherObj = newTeachers.find(t => t.id === tId);
+                            let classPart = cellVal.split(' ')[0];
+                            if (classPart && classPart.length <= 5 && !teacherObj.classes.includes(classPart)) {
+                                teacherObj.classes.push(classPart);
+                            }
+                        } else {
+                            // Busy with class or duty
+                            newScheduleData[currentDayDetected][tId][pIdMatch] = 'busy';
+                            newScheduleData[currentDayDetected][tId].stats.classes++;
 
-                        // If period found and it's not a break, mark as busy
-                        if (pIdMatch && !PERIODS.find(p=>p.id === pIdMatch).isBreak) {
-                            // If cell has data like "假" or "Leave", mark as leave
-                            if (val.includes('假') || val.includes('Sick')) {
-                                newScheduleData[dayMatch][tId][pIdMatch] = 'leave';
-                                newScheduleData[dayMatch][tId].stats.leaves++;
-                            } else if (val.includes('代')) {
-                                newScheduleData[dayMatch][tId][pIdMatch] = 'subbing';
-                                newScheduleData[dayMatch][tId].stats.subs++;
-                            } else {
-                                newScheduleData[dayMatch][tId][pIdMatch] = 'busy';
-                                newScheduleData[dayMatch][tId].stats.classes++;
-                                
-                                // Attempt to extract class name (e.g., from "4A 中文")
-                                let potentialClass = val.split(' ')[0];
-                                if (potentialClass.length <= 4 && !teacherObj.classes.includes(potentialClass)) {
-                                    teacherObj.classes.push(potentialClass);
-                                }
+                            let teacherObj = newTeachers.find(t => t.id === tId);
+                            let classPart = cellVal.split(' ')[0];
+                            if (classPart && classPart.length <= 5 && !teacherObj.classes.includes(classPart)) {
+                                teacherObj.classes.push(classPart);
                             }
                         }
                     }
-                });
-            });
+                }
+            }
 
-            // Replace old data with new real data
             TEACHERS = newTeachers;
             scheduleData = newScheduleData;
-        }
-
-        // Generic Notification UI helper
-        function showNotification(message, colorType = 'green') {
-            let colorClasses = 'bg-green-600';
-            if (colorType === 'red') colorClasses = 'bg-red-600';
-            if (colorType === 'blue') colorClasses = 'bg-blue-600';
-
-            const notification = document.createElement('div');
-            notification.className = `fixed top-4 right-4 ${colorClasses} text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-y-[-150%] opacity-0 flex items-center gap-2`;
-            notification.innerHTML = `<span>${message}</span>`;
-            
-            document.body.appendChild(notification);
-            
-            // Animate in
-            setTimeout(() => {
-                notification.classList.remove('translate-y-[-150%]', 'opacity-0');
-            }, 10);
-            
-            // Animate out
-            setTimeout(() => {
-                notification.classList.add('translate-y-[-150%]', 'opacity-0');
-                setTimeout(() => notification.remove(), 300);
-            }, 3500);
         }
 
         // Generate random schedule for all teachers for the whole week
