@@ -1,242 +1,974 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>滬江小學 - 2026-2027年度 教師空節分析及時間表系統</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    :root {
-      --primary-red: #A6192E;
-      --accent-red: #C8102E;
-      --light-red: #FFF0F2;
-    }
-    .bg-red-theme { background-color: var(--primary-red); }
-    .bg-red-accent { background-color: var(--accent-red); }
-    .text-red-theme { color: var(--primary-red); }
-    .border-red-theme { border-color: var(--primary-red); }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-800">
-
-  <!-- 頂部導航 / 標題列 -->
-  <header class="bg-red-theme text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl md:text-3xl font-bold tracking-wide">滬江小學</h1>
-        <p class="text-sm md:text-base text-red-100 mt-1">2026 – 2027 年度 教師空節分析及時間表系統</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <label class="cursor-pointer bg-white text-red-theme hover:bg-red-50 font-semibold px-4 py-2 rounded-lg shadow transition flex items-center gap-2">
-          <span>📁 上傳全校總表 Excel</span>
-          <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden">
-        </label>
-      </div>
-    </div>
-  </header>
-
-  <!-- 主內容區 -->
-  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-    
-    <!-- 左側：時間表與時段選擇器 (佔 7 欄) -->
-    <section class="lg:col-span-7 space-y-6">
-      
-      <!-- 手動切換控制器 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span class="w-2 h-5 bg-red-accent rounded"></span>
-          選擇查詢時段
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">選擇星期</label>
-            <select id="daySelect" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50 focus:ring-2 focus:ring-red-500 outline-none">
-              <option value="週一">星期一</option>
-              <option value="週二">星期二</option>
-              <option value="週三">星期三</option>
-              <option value="週四">星期四</option>
-              <option value="週五">星期五</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">選擇節數 (共 17 節)</label>
-            <select id="periodSelect" class="w-full border border-slate-300 rounded-lg p-2.5 bg-slate-50 focus:ring-2 focus:ring-red-500 outline-none"></select>
-          </div>
-        </div>
-      </div>
-
-      <!-- 17 節時間表框架 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <span class="w-2 h-5 bg-red-accent rounded"></span>
-          學校時間表框架
-        </h2>
-        <div class="overflow-x-auto max-h-[600px]">
-          <table class="w-full text-sm text-center border-collapse">
-            <thead class="sticky top-0 bg-red-theme text-white">
-              <tr>
-                <th class="p-2.5 border border-red-700 w-32">節數 / 時段</th>
-                <th class="p-2.5 border border-red-700">週一</th>
-                <th class="p-2.5 border border-red-700">週二</th>
-                <th class="p-2.5 border border-red-700">週三</th>
-                <th class="p-2.5 border border-red-700">週四</th>
-                <th class="p-2.5 border border-red-700">週五</th>
-              </tr>
-            </thead>
-            <tbody id="timetableBody" class="divide-y divide-slate-200"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- 右側：空節分析與老師名單 (佔 5 欄) -->
-    <section class="lg:col-span-5 space-y-6">
-      
-      <!-- 當前時段統計面板 -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <div class="flex justify-between items-start mb-4">
-          <div>
-            <span id="currentSelectionBadge" class="inline-block px-3 py-1 bg-red-100 text-red-theme font-bold text-xs rounded-full mb-1">
-              週一 - 早會前
-            </span>
-            <h3 class="text-xl font-bold text-slate-800">空節老師名單</h3>
-          </div>
-          <div class="text-right">
-            <span id="freeTeacherCount" class="text-2xl font-black text-red-theme">0</span>
-            <span class="text-xs text-slate-500 block">位老師空閒</span>
-          </div>
-        </div>
-
-        <!-- 搜尋欄 -->
-        <input type="text" id="searchTeacher" placeholder="搜尋老師姓名..." 
-          class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 outline-none mb-4">
-
-        <!-- 老師卡片列表 -->
-        <div id="teacherList" class="grid grid-cols-2 gap-2.5 max-h-[520px] overflow-y-auto pr-1"></div>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    // 每日 17 節結構定義
-    const PERIODS = [
-      { name: "早會前", isLesson: false },
-      { name: "班主任節", isLesson: false },
-      { name: "第 1 節", isLesson: true },
-      { name: "第 2 節", isLesson: true },
-      { name: "小息 1", isLesson: false },
-      { name: "第 3 節", isLesson: true },
-      { name: "第 4 節", isLesson: true },
-      { name: "小息 2", isLesson: false },
-      { name: "第 5 節", isLesson: true },
-      { name: "第 6 節", isLesson: true },
-      { name: "午膳", isLesson: false },
-      { name: "午息", isLesson: false },
-      { name: "第 7 節", isLesson: true },
-      { name: "第 8 節", isLesson: true },
-      { name: "第 9 節", isLesson: true },
-      { name: "第 10 節", isLesson: true },
-      { name: "放學當值", isLesson: false }
-    ];
-
-    const DAYS = ["週一", "週二", "週三", "週四", "週五"];
-    let teachers = []; // 儲存 46 位老師的資料結構
-    let selectedDay = "週一";
-    let selectedPeriod = "早會前";
-
-    // 初始化介面
-    function init() {
-      // 填充節數選單
-      const periodSelect = document.getElementById("periodSelect");
-      periodSelect.innerHTML = PERIODS.map(p => `<option value="${p.name}">${p.name} ${!p.isLesson ? '(非授課)' : ''}</option>`).join("");
-
-      // 渲染課表框架
-      const tbody = document.getElementById("timetableBody");
-      tbody.innerHTML = PERIODS.map(p => `
-        <tr class="${!p.isLesson ? 'bg-slate-100 font-semibold text-slate-600' : 'hover:bg-red-50 cursor-pointer'} transition">
-          <td class="p-2 border border-slate-200 text-xs text-left px-3">${p.name}</td>
-          ${DAYS.map(d => `
-            <td class="p-2 border border-slate-200 timetable-cell" data-day="${d}" data-period="${p.name}">
-              ${p.isLesson ? '授課節' : p.name}
-            </td>
-          `).join("")}
-        </tr>
-      `).join("");
-
-      // 綁定事件
-      document.getElementById("daySelect").addEventListener("change", (e) => {
-        selectedDay = e.target.value;
-        updateView();
-      });
-      document.getElementById("periodSelect").addEventListener("change", (e) => {
-        selectedPeriod = e.target.value;
-        updateView();
-      });
-      document.querySelectorAll(".timetable-cell").forEach(cell => {
-        cell.addEventListener("click", () => {
-          selectedDay = cell.dataset.day;
-          selectedPeriod = cell.dataset.period;
-          document.getElementById("daySelect").value = selectedDay;
-          document.getElementById("periodSelect").value = selectedPeriod;
-          updateView();
-        });
-      });
-      document.getElementById("searchTeacher").addEventListener("input", renderTeacherList);
-      document.getElementById("excelFileInput").addEventListener("change", handleExcelUpload);
-
-      updateView();
-    }
-
-    function updateView() {
-      document.getElementById("currentSelectionBadge").innerText = `${selectedDay} - ${selectedPeriod}`;
-      renderTeacherList();
-    }
-
-    // 處理 Excel 匯入
-    function handleExcelUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const data = new Uint8Array(evt.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rawJson = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-
-        if (rawJson.length > 0) {
-          const headers = rawJson[0];
-          // 自動過濾無效欄位（如「第 1 欄」、「Unnamed」等）
-          teachers = headers.slice(2).filter(name => name && !name.includes("第") && !name.includes("欄") && !name.includes("Unnamed"));
-          alert(`成功匯入課表！共辨識到 ${teachers.length} 位老師。`);
-          renderTeacherList();
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滬江小學空節老師搜尋器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans HK"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            red: '#D32F2F', // 深紅色
+                            lightred: '#FFEBEE', // 淺紅背景
+                            darkred: '#B71C1C',
+                            white: '#FFFFFF',
+                            gray: '#F5F5F5',
+                            text: '#333333'
+                        }
+                    }
+                }
+            }
         }
-      };
-      reader.readAsArrayBuffer(file);
-    }
+    </script>
+    <style>
+        body {
+            background-color: #FAFAFA;
+            color: #333333;
+        }
+        .period-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .period-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(211, 47, 47, 0.2), 0 2px 4px -1px rgba(211, 47, 47, 0.1);
+        }
+        .period-btn.active {
+            background-color: #D32F2F;
+            color: white;
+            border-color: #B71C1C;
+            font-weight: bold;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+        }
+        .teacher-card {
+            transition: all 0.3s ease;
+        }
+        .teacher-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(211, 47, 47, 0.1), 0 4px 6px -2px rgba(211, 47, 47, 0.05);
+        }
+        /* Custom Scrollbar for better UI */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D32F2F; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #B71C1C; 
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col font-sans overflow-hidden">
 
-    function renderTeacherList() {
-      const listContainer = document.getElementById("teacherList");
-      const filterText = document.getElementById("searchTeacher").value.trim().toLowerCase();
-      
-      const filtered = teachers.filter(t => t.toLowerCase().includes(filterText));
-      document.getElementById("freeTeacherCount").innerText = filtered.length;
+    <header class="bg-brand-red text-white py-4 px-6 shadow-md z-10 shrink-0">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- SVG Icon for School/Search -->
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <h1 class="text-2xl font-bold tracking-wider">滬江小學空節老師搜尋器</h1>
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <!-- 老師搜尋欄 -->
+                <div class="relative z-50">
+                    <div class="flex items-center bg-white rounded-lg overflow-hidden px-2 py-1.5 focus-within:ring-2 focus-within:ring-brand-lightred shadow-sm border border-transparent focus-within:border-brand-red/30 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input type="text" id="teacher-search-input" placeholder="搜尋老師名稱..." class="w-32 md:w-40 lg:w-48 px-2 py-1 text-sm outline-none text-gray-700 bg-transparent placeholder-gray-400">
+                    </div>
+                    <!-- 搜尋建議下拉選單 -->
+                    <div id="search-suggestions" class="absolute top-full mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-100 hidden z-[60] max-h-60 overflow-y-auto"></div>
+                </div>
 
-      if (filtered.length === 0) {
-        listContainer.innerHTML = `<div class="col-span-2 text-center text-slate-400 py-8 text-sm">暫無空節老師或未載入名單</div>`;
-        return;
-      }
-
-      listContainer.innerHTML = filtered.map(name => `
-        <div class="p-3 border border-slate-200 rounded-lg hover:border-red-400 bg-white flex items-center justify-between shadow-sm">
-          <span class="font-medium text-slate-800 text-sm">${name}</span>
-          <span class="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">空節</span>
+                <div class="text-sm opacity-80 hidden md:block">
+                    目前選擇: <span id="current-selection-display" class="font-bold">未選擇</span>
+                </div>
+                <div class="relative">
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                    <button onclick="document.getElementById('excel-upload').click()" class="bg-white text-brand-red hover:bg-gray-100 font-bold py-2 px-4 rounded-lg shadow-sm text-sm flex items-center gap-2 transition-colors border border-transparent hover:border-brand-red/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        匯入全校老師課表
+                    </button>
+                    <div class="absolute -bottom-6 right-0 text-[10px] opacity-70 whitespace-nowrap">
+                        請匯入: 全校老師總表_滬江.xlsx
+                    </div>
+                </div>
+            </div>
         </div>
-      `).join("");
-    }
+    </header>
 
-    init();
-  </script>
+    <main class="flex-1 flex overflow-hidden bg-brand-lightred max-w-screen-2xl mx-auto w-full">
+        
+        <!-- Left Panel: Timetable Selection -->
+        <aside class="w-1/3 min-w-[300px] max-w-[400px] bg-white border-r-2 border-brand-red/20 shadow-lg flex flex-col z-0">
+            <div class="p-4 bg-brand-red/5 border-b border-brand-red/10">
+                <h2 class="text-lg font-bold text-brand-darkred flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
+                    </svg>
+                    時間表選擇
+                </h2>
+                
+                <!-- Day Tabs -->
+                <div class="flex mt-3 rounded-lg overflow-hidden border border-brand-red/30">
+                    <button class="day-tab flex-1 py-2 text-sm font-medium text-center bg-brand-red text-white" data-day="1">一</button>
+                    <button class="day-tab flex-1 py-2 text-sm font-medium text-center bg-white text-brand-red hover:bg-brand-red/10" data-day="2">二</button>
+                    <button class="day-tab flex-1 py-2 text-sm font-medium text-center bg-white text-brand-red hover:bg-brand-red/10" data-day="3">三</button>
+                    <button class="day-tab flex-1 py-2 text-sm font-medium text-center bg-white text-brand-red hover:bg-brand-red/10" data-day="4">四</button>
+                    <button class="day-tab flex-1 py-2 text-sm font-medium text-center bg-white text-brand-red hover:bg-brand-red/10" data-day="5">五</button>
+                </div>
+            </div>
+
+            <!-- Periods Grid -->
+            <div class="flex-1 overflow-y-auto p-4" id="periods-container">
+                <!-- Periods will be generated by JS -->
+            </div>
+        </aside>
+
+        <!-- Right Panel: Results -->
+        <section class="flex-1 flex flex-col relative overflow-hidden bg-brand-gray">
+            
+            <!-- VIEW 1: Period View (Original) -->
+            <div id="period-view" class="flex-1 flex flex-col h-full overflow-hidden">
+                <!-- Result Header -->
+                <div class="p-4 bg-white border-b shadow-sm shrink-0 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-xl font-bold text-brand-darkred flex items-center gap-2">
+                        </svg>
+                        當節空堂老師名單
+                    </h2>
+                    <p class="text-sm text-gray-500 mt-1" id="result-meta">請在左方選擇星期及節次</p>
+                </div>
+                <div class="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full font-medium shadow-inner" id="total-free-count">
+                    共 0 人
+                </div>
+            </div>
+
+            <!-- Teacher Cards Container -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div id="initial-state" class="h-full flex flex-col items-center justify-center text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 mb-4 text-brand-red/20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p class="text-lg">點擊左側時間表節次以顯示空堂老師</p>
+                </div>
+
+                <div id="teachers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 hidden">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+
+            <!-- Bottom Statistics Panel -->
+            <div id="stats-panel" class="bg-white border-t border-brand-red/20 p-4 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] hidden">
+                <h3 class="text-md font-bold text-brand-darkred mb-3 border-b pb-1">當日統計及建議</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    <!-- Most Classes -->
+                    <div class="bg-red-50 rounded-lg p-3 border border-red-100">
+                        <div class="text-xs text-red-800 font-bold mb-1">今日最多課老師</div>
+                        <div id="stat-most-classes" class="font-medium text-gray-800">-</div>
+                    </div>
+                    
+                    <!-- Least Classes -->
+                    <div class="bg-green-50 rounded-lg p-3 border border-green-100">
+                        <div class="text-xs text-green-800 font-bold mb-1">今日最少課老師</div>
+                        <div id="stat-least-classes" class="font-medium text-gray-800">-</div>
+                    </div>
+                    
+                    <!-- Best Substitute -->
+                    <div class="bg-brand-red text-white rounded-lg p-3 shadow-md relative overflow-hidden">
+                        <!-- Decorative element -->
+                        <div class="absolute -right-4 -top-4 w-16 h-16 bg-white/20 rounded-full"></div>
+                        
+                        <div class="text-xs font-bold mb-1 opacity-90 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                            </svg>
+                            最適合代課老師
+                        </div>
+                        <div id="stat-best-sub" class="font-bold text-lg">-</div>
+                        <div class="text-[10px] opacity-75 mt-1 leading-tight">條件: 請最多假、空節多、教該班、前後無課</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW 2: Teacher Weekly Timetable View (New) -->
+            <div id="teacher-view" class="flex-1 flex flex-col h-full overflow-hidden hidden bg-white">
+                <!-- Header for Teacher View -->
+                <div class="p-4 bg-white border-b shadow-sm shrink-0 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-xl font-bold text-brand-darkred flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span id="teacher-view-name">老師名稱</span> 的全週課表
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1" id="teacher-view-meta">任教科目/班別</p>
+                    </div>
+                    <button onclick="closeTeacherView()" class="bg-gray-100 hover:bg-brand-lightred hover:text-brand-red text-gray-600 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        返回空堂搜尋
+                    </button>
+                </div>
+                
+                <!-- Timetable Grid -->
+                <div class="flex-1 overflow-auto p-6 bg-gray-50">
+                    <div id="teacher-timetable-container" class="min-w-[700px] max-w-5xl mx-auto shadow-sm rounded-xl overflow-hidden bg-white border border-gray-200">
+                        <!-- Generated by JS -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // Constants
+        const DAYS = ['星期一', '星期二', '星期三', '星期四', '星期五'];
+        const PERIODS = [
+            { id: 'pre_assembly_1', name: '早會前 7:30', time: '7:30 - 7:45' },
+            { id: 'pre_assembly_2', name: '早會前 7:45', time: '7:45 - 8:10' },
+            { id: 'assembly', name: '早會/班主任節', time: '8:10 - 8:35' },
+            { id: 'p1', name: '第1節', time: '8:35 - 9:05' },
+            { id: 'p2', name: '第2節', time: '9:05 - 9:35' },
+            { id: 'recess_1', name: '小息1', time: '9:35 - 9:50', isBreak: true },
+            { id: 'p3', name: '第3節', time: '9:50 - 10:20' },
+            { id: 'p4', name: '第4節', time: '10:20 - 10:50' },
+            { id: 'recess_2', name: '小息2', time: '10:50 - 11:05', isBreak: true },
+            { id: 'p5', name: '第5節', time: '11:05 - 11:35' },
+            { id: 'p6', name: '第6節', time: '11:35 - 12:05' },
+            { id: 'lunch', name: '午膳', time: '12:05 - 12:45', isBreak: true },
+            { id: 'lunch_break', name: '午息', time: '12:45 - 1:00', isBreak: true },
+            { id: 'p7', name: '第7節', time: '1:00 - 1:30' },
+            { id: 'p8', name: '第8節', time: '1:30 - 2:00' },
+            { id: 'p9', name: '第9節', time: '2:00 - 2:30' },
+            { id: 'p10', name: '第10節', time: '2:30 - 3:00' },
+            { id: 'after_school', name: '放學當值', time: '3:00 - ' }
+        ];
+
+        // Mock Data based on real names found
+        let TEACHERS = [
+            { id: 't1', name: '羅筱彤', role: '副校長', subjects: ['英文', '人文'], classes: ['4A', '5B', '6C'] },
+            { id: 't2', name: '袁潔儀', role: '副校長', subjects: ['中文', '視藝'], classes: ['1A', '2B', '3C'] },
+            { id: 't3', name: '黃惠蘭', role: '主任', subjects: ['中文', '體育'], classes: ['4B', '5C', '6D'] },
+            { id: 't4', name: '魏美琪', role: '主任', subjects: ['數學'], classes: ['1B', '2C', '3D'] },
+            { id: 't5', name: '陳靄忻', role: '主任', subjects: ['中文', '音樂'], classes: ['2A', '4C', '5D'] },
+            { id: 't6', name: '蕭燕唐', role: '主任', subjects: ['中文', '常識', '電腦'], classes: ['3A', '5A', '6A'] },
+            { id: 't7', name: '黃錦蘭', role: '主任', subjects: ['英文', '視藝'], classes: ['1C', '3B', '4D'] },
+            { id: 't8', name: '郭俊傑', role: '主任', subjects: ['數學', '常識'], classes: ['2D', '4A', '6B'] },
+            { id: 't9', name: '邢芙蓉', role: '主任', subjects: ['中文', '音樂', '普通話'], classes: ['1D', '3C', '5B'] },
+            { id: 't10', name: '黃梓晉', role: '主任', subjects: ['中文', '體育'], classes: ['2A', '4B', '6C'] },
+            { id: 't11', name: '李紅', role: '班主任', subjects: ['科學', '電腦'], classes: ['1A', '3A', '5A'] },
+            { id: 't12', name: '何嘉慧', role: '班主任', subjects: ['英文', '普通話'], classes: ['1B', '3B', '5B'] },
+            { id: 't13', name: '胡詠敏', role: '班主任', subjects: ['數學', '視藝'], classes: ['1C', '3C', '5C'] },
+            { id: 't14', name: '周淑敏', role: '班主任', subjects: ['英文'], classes: ['1D', '3D', '5D'] },
+            { id: 't15', name: '賴樂昀', role: '班主任', subjects: ['英文', '常識'], classes: ['2A', '4A', '6A'] },
+            { id: 't16', name: '黃佩柔', role: '班主任', subjects: ['英文', '電腦'], classes: ['2B', '4B', '6B'] },
+            { id: 't17', name: '何曉欣', role: '班主任', subjects: ['中文', '常識'], classes: ['2C', '4C', '6C'] },
+            { id: 't18', name: '莊美薇', role: '班主任', subjects: ['英文', '音樂'], classes: ['2D', '4D', '6D'] },
+            { id: 't19', name: 'Brenden W.', role: 'NET', subjects: ['英文'], classes: ['P1-P6'] },
+            { id: 't20', name: '陳耀珽', role: '班主任', subjects: ['數學', '體育'], classes: ['4A', '5A', '6A'] }
+        ];
+
+        // State
+        let currentDay = 1; // 1-5 (Mon-Fri)
+        let currentPeriodId = null;
+        let scheduleData = {}; // Store generated schedule
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Show loading notification
+            showNotification('正在解析全校課表...', 'blue');
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    // Assume first sheet contains the master timetable
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Convert to array of objects
+                    const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                    
+                    if (json.length > 0) {
+                        processImportedData(json);
+                        showNotification('課表匯入成功！已更新老師空堂資料。', 'green');
+                        
+                        // Reset selection and UI
+                        currentPeriodId = null;
+                        renderPeriods();
+                        updateHeaderDisplay();
+                        document.getElementById('initial-state').classList.remove('hidden');
+                        document.getElementById('teachers-grid').classList.add('hidden');
+                        document.getElementById('stats-panel').classList.add('hidden');
+                    } else {
+                        showNotification('檔案為空，請檢查格式。', 'red');
+                    }
+                } catch (error) {
+                    console.error(error);
+                    showNotification('讀取失敗，請確保上傳的是正確的 Excel 檔案。', 'red');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processImportedData(data) {
+            let newTeachers = [];
+            let newScheduleData = { 1:{}, 2:{}, 3:{}, 4:{}, 5:{} };
+
+            data.forEach((row, index) => {
+                // Heuristic: Find name column (usually labeled 姓名, 老師, Name, or just the first key)
+                let keys = Object.keys(row);
+                let nameKey = keys.find(k => k.includes('姓名') || k.includes('老師') || k.includes('Name')) || keys[0];
+                let teacherName = row[nameKey];
+                
+                // Skip empty rows or header artifacts
+                if (!teacherName || typeof teacherName !== 'string' || teacherName.length > 10) return;
+
+                let tId = 't_imported_' + index;
+                let role = row['職位'] || row['Role'] || '老師';
+                
+                let teacherObj = {
+                    id: tId,
+                    name: String(teacherName).trim(),
+                    role: role,
+                    subjects: [],
+                    classes: []
+                };
+                newTeachers.push(teacherObj);
+
+                // Initialize empty schedule for this teacher
+                for (let d = 1; d <= 5; d++) {
+                    newScheduleData[d][tId] = { stats: { classes: 0, leaves: 0, subs: 0 } };
+                    PERIODS.forEach(p => {
+                        newScheduleData[d][tId][p.id] = p.isBreak ? 'break' : 'free'; // Default free
+                    });
+                }
+
+                // Analyze columns to map to periods
+                keys.forEach(key => {
+                    let val = String(row[key]).trim();
+                    if (!val || val === '空' || val.toLowerCase() === 'free') return; // Cell is empty = free
+
+                    // Determine Day
+                    let dayMatch = -1;
+                    if (key.includes('一') || key.includes('Mon')) dayMatch = 1;
+                    else if (key.includes('二') || key.includes('Tue')) dayMatch = 2;
+                    else if (key.includes('三') || key.includes('Wed')) dayMatch = 3;
+                    else if (key.includes('四') || key.includes('Thu')) dayMatch = 4;
+                    else if (key.includes('五') || key.includes('Fri')) dayMatch = 5;
+
+                    if (dayMatch !== -1) {
+                        // Determine Period ID
+                        let pIdMatch = null;
+                        const keyStr = String(key).toLowerCase();
+                        
+                        if (keyStr.includes('7:30')) pIdMatch = 'pre_assembly_1';
+                        else if (keyStr.includes('7:45')) pIdMatch = 'pre_assembly_2';
+                        else if (keyStr.includes('早會') || keyStr.includes('班主任')) pIdMatch = 'assembly';
+                        else if (keyStr.includes('1') || keyStr.includes('p1')) pIdMatch = 'p1';
+                        else if (keyStr.includes('2') || keyStr.includes('p2')) pIdMatch = 'p2';
+                        else if (keyStr.includes('3') || keyStr.includes('p3')) pIdMatch = 'p3';
+                        else if (keyStr.includes('4') || keyStr.includes('p4')) pIdMatch = 'p4';
+                        else if (keyStr.includes('5') || keyStr.includes('p5')) pIdMatch = 'p5';
+                        else if (keyStr.includes('6') || keyStr.includes('p6')) pIdMatch = 'p6';
+                        else if (keyStr.includes('7') || keyStr.includes('p7')) pIdMatch = 'p7';
+                        else if (keyStr.includes('8') || keyStr.includes('p8')) pIdMatch = 'p8';
+                        else if (keyStr.includes('9') || keyStr.includes('p9')) pIdMatch = 'p9';
+                        else if (keyStr.includes('10') || keyStr.includes('p10')) pIdMatch = 'p10';
+                        else if (keyStr.includes('放學') || keyStr.includes('當值')) pIdMatch = 'after_school';
+
+                        // If period found and it's not a break, mark as busy
+                        if (pIdMatch && !PERIODS.find(p=>p.id === pIdMatch).isBreak) {
+                            // If cell has data like "假" or "Leave", mark as leave
+                            if (val.includes('假') || val.includes('Sick')) {
+                                newScheduleData[dayMatch][tId][pIdMatch] = 'leave';
+                                newScheduleData[dayMatch][tId].stats.leaves++;
+                            } else if (val.includes('代')) {
+                                newScheduleData[dayMatch][tId][pIdMatch] = 'subbing';
+                                newScheduleData[dayMatch][tId].stats.subs++;
+                            } else {
+                                newScheduleData[dayMatch][tId][pIdMatch] = 'busy';
+                                newScheduleData[dayMatch][tId].stats.classes++;
+                                
+                                // Attempt to extract class name (e.g., from "4A 中文")
+                                let potentialClass = val.split(' ')[0];
+                                if (potentialClass.length <= 4 && !teacherObj.classes.includes(potentialClass)) {
+                                    teacherObj.classes.push(potentialClass);
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+
+            // Replace old data with new real data
+            TEACHERS = newTeachers;
+            scheduleData = newScheduleData;
+        }
+
+        // Generic Notification UI helper
+        function showNotification(message, colorType = 'green') {
+            let colorClasses = 'bg-green-600';
+            if (colorType === 'red') colorClasses = 'bg-red-600';
+            if (colorType === 'blue') colorClasses = 'bg-blue-600';
+
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 ${colorClasses} text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-y-[-150%] opacity-0 flex items-center gap-2`;
+            notification.innerHTML = `<span>${message}</span>`;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-y-[-150%]', 'opacity-0');
+            }, 10);
+            
+            // Animate out
+            setTimeout(() => {
+                notification.classList.add('translate-y-[-150%]', 'opacity-0');
+                setTimeout(() => notification.remove(), 300);
+            }, 3500);
+        }
+
+        // Generate random schedule for all teachers for the whole week
+        function generateSchedule() {
+            for (let d = 1; d <= 5; d++) {
+                scheduleData[d] = {};
+                
+                // Track daily stats
+                let dailyClassCounts = {};
+                let dailyLeaveCounts = {};
+                let dailySubCounts = {};
+
+                TEACHERS.forEach(t => {
+                    dailyClassCounts[t.id] = 0;
+                    dailyLeaveCounts[t.id] = 0;
+                    dailySubCounts[t.id] = 0;
+                    
+                    // Determine if teacher is on leave today (small chance)
+                    const isOnLeaveToday = Math.random() < 0.1; 
+
+                    scheduleData[d][t.id] = {};
+                    
+                    PERIODS.forEach((p, index) => {
+                        if (p.isBreak) {
+                            scheduleData[d][t.id][p.id] = 'break';
+                            return;
+                        }
+
+                        if (isOnLeaveToday) {
+                            // If on leave, they are unavailable and count towards leave
+                            scheduleData[d][t.id][p.id] = 'leave';
+                            dailyLeaveCounts[t.id]++;
+                            return;
+                        }
+
+                        // Randomly assign classes, duties, or free periods
+                        // Higher probability of having a class during normal periods
+                        let status;
+                        const rand = Math.random();
+                        
+                        if (p.id.includes('pre_') || p.id === 'after_school') {
+                            // Less likely to be busy before/after school
+                            status = rand > 0.8 ? 'busy' : 'free';
+                        } else {
+                            // Normal classes
+                            status = rand > 0.4 ? 'busy' : 'free';
+                            
+                            // Simulate substitutions (small chance if busy)
+                            if (status === 'busy' && Math.random() < 0.15) {
+                                status = 'subbing';
+                                dailySubCounts[t.id]++;
+                            } else if (status === 'busy') {
+                                dailyClassCounts[t.id]++;
+                            }
+                        }
+
+                        scheduleData[d][t.id][p.id] = status;
+                    });
+
+                    // Store daily stats within the schedule data
+                    scheduleData[d][t.id].stats = {
+                        classes: dailyClassCounts[t.id],
+                        leaves: dailyLeaveCounts[t.id],
+                        subs: dailySubCounts[t.id]
+                    };
+                });
+            }
+        }
+
+        function renderPeriods() {
+            const container = document.getElementById('periods-container');
+            container.innerHTML = '';
+
+            PERIODS.forEach(period => {
+                const btn = document.createElement('button');
+                
+                if (period.isBreak) {
+                    btn.className = 'w-full text-left px-4 py-2 mb-2 bg-gray-100 rounded-md text-gray-500 text-sm font-medium border border-gray-200 flex justify-between items-center cursor-not-allowed';
+                    btn.innerHTML = `<span>${period.name}</span> <span class="text-xs opacity-70">${period.time}</span>`;
+                    btn.disabled = true;
+                } else {
+                    btn.className = 'period-btn w-full text-left px-4 py-3 mb-2 bg-white rounded-lg border-2 border-transparent shadow-sm text-gray-700 font-medium hover:border-brand-red/40 flex flex-col focus:outline-none';
+                    btn.innerHTML = `
+                        <div class="flex justify-between items-center w-full">
+                            <span class="text-base">${period.name}</span>
+                            <span class="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded">${period.time}</span>
+                        </div>
+                    `;
+                    
+                    if (currentPeriodId === period.id) {
+                        btn.classList.add('active');
+                    }
+
+                    btn.onclick = () => selectPeriod(period.id);
+                }
+                
+                container.appendChild(btn);
+            });
+        }
+
+        function setupDayTabs() {
+            const tabs = document.querySelectorAll('.day-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    closeTeacherView(); // 切換回空堂搜尋模式
+                    
+                    // Update Active Styling
+                    tabs.forEach(t => {
+                        t.classList.remove('bg-brand-red', 'text-white');
+                        t.classList.add('bg-white', 'text-brand-red', 'hover:bg-brand-red/10');
+                    });
+                    
+                    e.target.classList.remove('bg-white', 'text-brand-red', 'hover:bg-brand-red/10');
+                    e.target.classList.add('bg-brand-red', 'text-white');
+                    
+                    currentDay = parseInt(e.target.dataset.day);
+                    
+                    // Re-render results if a period is selected
+                    if (currentPeriodId) {
+                        updateResults();
+                        updateStats();
+                    } else {
+                        updateHeaderDisplay();
+                    }
+                });
+            });
+        }
+
+        function selectPeriod(periodId) {
+            closeTeacherView(); // 切換回空堂搜尋模式
+            
+            currentPeriodId = periodId;
+            renderPeriods(); // Update active state on buttons
+            updateResults();
+            updateStats();
+        }
+
+        function updateHeaderDisplay() {
+            const display = document.getElementById('current-selection-display');
+            if (currentPeriodId) {
+                const periodName = PERIODS.find(p => p.id === currentPeriodId).name;
+                display.innerHTML = `${DAYS[currentDay-1]} - <span class="text-brand-lightred">${periodName}</span>`;
+            } else {
+                display.innerText = `${DAYS[currentDay-1]} (未選節次)`;
+            }
+        }
+
+        function updateResults() {
+            updateHeaderDisplay();
+            
+            document.getElementById('initial-state').classList.add('hidden');
+            const grid = document.getElementById('teachers-grid');
+            grid.classList.remove('hidden');
+            grid.innerHTML = '';
+            
+            document.getElementById('stats-panel').classList.remove('hidden');
+
+            const periodName = PERIODS.find(p => p.id === currentPeriodId).name;
+            document.getElementById('result-meta').innerText = `${DAYS[currentDay-1]} | ${periodName} 空堂名單`;
+
+            // Filter free teachers
+            const freeTeachers = TEACHERS.filter(t => {
+                const status = scheduleData[currentDay][t.id][currentPeriodId];
+                return status === 'free';
+            });
+
+            document.getElementById('total-free-count').innerText = `共 ${freeTeachers.length} 人`;
+
+            if (freeTeachers.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full flex flex-col items-center justify-center py-12 text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-2 text-brand-red/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p>此節次沒有空堂老師</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Render Cards
+            freeTeachers.forEach(t => {
+                const stats = scheduleData[currentDay][t.id].stats;
+                const card = document.createElement('div');
+                card.className = 'teacher-card bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col relative';
+                
+                // Add a subtle color accent based on role
+                let accentColor = 'bg-brand-red'; // default
+                if (t.role.includes('副校長')) accentColor = 'bg-yellow-500';
+                else if (t.role.includes('主任')) accentColor = 'bg-orange-500';
+                
+                card.innerHTML = `
+                    <div class="h-1 w-full ${accentColor}"></div>
+                    <div class="p-4 flex-1">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-bold text-gray-800">${t.name}</h3>
+                            <span class="text-xs font-medium bg-gray-100 text-gray-600 px-2 py-1 rounded">${t.role}</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="text-xs text-gray-400 mb-1">任教科目及班別</div>
+                            <div class="flex flex-wrap gap-1">
+                                ${t.subjects.map(s => `<span class="inline-block px-2 py-0.5 bg-red-50 text-brand-darkred text-xs rounded-full border border-red-100">${s}</span>`).join('')}
+                                ${t.classes.map(c => `<span class="inline-block px-2 py-0.5 bg-gray-50 text-gray-600 text-xs rounded-full border border-gray-200">${c}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-3 border-t flex justify-between items-center text-xs text-gray-600">
+                        <div class="flex gap-4">
+                            <span title="今日請假節數" class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+                                假: ${stats.leaves}
+                            </span>
+                            <span title="今日代課節數" class="flex items-center gap-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" /></svg>
+                                代: ${stats.subs}
+                            </span>
+                        </div>
+                        <button class="text-brand-red hover:text-brand-darkred font-medium" onclick="assignSub('${t.name}')">
+                            指派代課
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function updateStats() {
+            const dayData = scheduleData[currentDay];
+            
+            // Calculate Most and Least Classes (excluding leaves)
+            let maxClasses = -1;
+            let minClasses = 999;
+            let mostBusyTeachers = [];
+            let leastBusyTeachers = [];
+
+            // Find free teachers for current period to evaluate best sub
+            let availableForSub = [];
+
+            TEACHERS.forEach(t => {
+                const stats = dayData[t.id].stats;
+                const isLeaveToday = stats.leaves > 5; // Simple check if fully on leave
+
+                if (!isLeaveToday) {
+                    const totalWork = stats.classes + stats.subs;
+                    
+                    if (totalWork > maxClasses) {
+                        maxClasses = totalWork;
+                        mostBusyTeachers = [t.name];
+                    } else if (totalWork === maxClasses) {
+                        mostBusyTeachers.push(t.name);
+                    }
+
+                    if (totalWork < minClasses) {
+                        minClasses = totalWork;
+                        leastBusyTeachers = [t.name];
+                    } else if (totalWork === minClasses) {
+                        leastBusyTeachers.push(t.name);
+                    }
+                }
+
+                // Check if free this period for best sub logic
+                if (dayData[t.id][currentPeriodId] === 'free') {
+                    
+                    // Evaluate conditions for Best Sub:
+                    // 1. Has taken most leaves (historically, but here we mock it by looking at past fake data, or just use least classes today as a proxy for "most free periods")
+                    // 2. Most free periods today (lowest totalWork)
+                    // 3. (Mocked) Teaches the class - hard to determine without knowing WHICH class needs a sub. We assume an ideal score based on general availability.
+                    // 4. No class before and after (adjacent free periods)
+                    
+                    const currentIndex = PERIODS.findIndex(p => p.id === currentPeriodId);
+                    
+                    let prevFree = false;
+                    let nextFree = false;
+                    
+                    // Check previous period (skip breaks)
+                    for (let i = currentIndex - 1; i >= 0; i--) {
+                        if (!PERIODS[i].isBreak) {
+                            prevFree = dayData[t.id][PERIODS[i].id] === 'free';
+                            break;
+                        }
+                    }
+                    // Check next period (skip breaks)
+                    for (let i = currentIndex + 1; i < PERIODS.length; i++) {
+                         if (!PERIODS[i].isBreak) {
+                            nextFree = dayData[t.id][PERIODS[i].id] === 'free';
+                            break;
+                        }
+                    }
+
+                    // Calculate a "suitability score"
+                    let score = 0;
+                    score -= stats.classes * 2; // Penalize for having many classes
+                    score -= stats.subs * 3;    // Penalize heavily if already subbing
+                    if (prevFree) score += 5;   // Bonus if previous period is free
+                    if (nextFree) score += 5;   // Bonus if next period is free
+                    
+                    // Since we don't have historical leave data, we simulate "most leave" by adding a random factor to specific teachers to mock this condition.
+                    if (['t7', 't12', 't15'].includes(t.id)) score += 10; 
+
+                    availableForSub.push({ name: t.name, score: score, reason: `今日${stats.classes}節課, 前後空堂:${prevFree&&nextFree?'是':'否'}` });
+                }
+            });
+
+            // Update DOM
+            document.getElementById('stat-most-classes').innerText = mostBusyTeachers.length > 0 
+                ? `${mostBusyTeachers.join(', ')} (${maxClasses}節)` 
+                : '-';
+            
+            document.getElementById('stat-least-classes').innerText = leastBusyTeachers.length > 0 
+                ? `${leastBusyTeachers.join(', ')} (${minClasses}節)` 
+                : '-';
+
+            // Find Best Sub
+            const bestSubEl = document.getElementById('stat-best-sub');
+            if (availableForSub.length > 0) {
+                // Sort by highest score
+                availableForSub.sort((a, b) => b.score - a.score);
+                const best = availableForSub[0];
+                
+                bestSubEl.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span>${best.name}</span>
+                        <span class="text-xs bg-white/20 px-2 py-1 rounded-full backdrop-blur-sm">推介</span>
+                    </div>
+                `;
+                // bestSubEl.title = best.reason; // Optional: tooltip
+            } else {
+                bestSubEl.innerText = '無適合人選';
+            }
+        }
+
+        function assignSub(teacherName) {
+            // In a real app, this would open a modal or send an API request
+            const periodName = PERIODS.find(p => p.id === currentPeriodId).name;
+            const dayName = DAYS[currentDay-1];
+            
+            // Simulate action visually without alerts
+            const notification = document.createElement('div');
+            notification.className = 'fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-y-full opacity-0 flex items-center gap-2';
+            notification.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                已擬定 ${dayName} ${periodName} 由 ${teacherName} 代課
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-y-full', 'opacity-0');
+            }, 10);
+            
+            // Animate out
+            setTimeout(() => {
+                notification.classList.add('translate-y-full', 'opacity-0');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        function setupSearch() {
+            const input = document.getElementById('teacher-search-input');
+            const suggestions = document.getElementById('search-suggestions');
+
+            input.addEventListener('input', (e) => {
+                const val = e.target.value.trim().toLowerCase();
+                suggestions.innerHTML = '';
+                if (!val) {
+                    suggestions.classList.add('hidden');
+                    return;
+                }
+
+                const matches = TEACHERS.filter(t => t.name.toLowerCase().includes(val));
+                if (matches.length > 0) {
+                    matches.forEach(t => {
+                        const div = document.createElement('div');
+                        div.className = 'px-4 py-2 hover:bg-brand-lightred hover:text-brand-darkred cursor-pointer text-sm text-gray-700 border-b border-gray-50 last:border-0 transition-colors';
+                        div.innerText = t.name;
+                        div.onclick = () => {
+                            input.value = t.name;
+                            suggestions.classList.add('hidden');
+                            showTeacherTimetable(t.id);
+                        };
+                        suggestions.appendChild(div);
+                    });
+                    suggestions.classList.remove('hidden');
+                } else {
+                    const div = document.createElement('div');
+                    div.className = 'px-4 py-3 text-sm text-gray-400 text-center';
+                    div.innerText = '找不到該老師';
+                    suggestions.appendChild(div);
+                    suggestions.classList.remove('hidden');
+                }
+            });
+
+            // Close suggestions on click outside
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !suggestions.contains(e.target)) {
+                    suggestions.classList.add('hidden');
+                }
+            });
+        }
+
+        function showTeacherTimetable(teacherId) {
+            const teacher = TEACHERS.find(t => t.id === teacherId);
+            if (!teacher) return;
+
+            // Toggle Views
+            document.getElementById('period-view').classList.add('hidden');
+            document.getElementById('teacher-view').classList.remove('hidden');
+
+            // Update Header
+            document.getElementById('teacher-view-name').innerText = teacher.name;
+            const subjects = teacher.subjects.length > 0 ? teacher.subjects.join(', ') : '無';
+            const classes = teacher.classes.length > 0 ? teacher.classes.join(', ') : '無';
+            document.getElementById('teacher-view-meta').innerText = `職位: ${teacher.role} | 任教科目: ${subjects} | 班別: ${classes}`;
+
+            // Render Timetable
+            const container = document.getElementById('teacher-timetable-container');
+            
+            let tableHTML = `
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-brand-red text-white">
+                            <th class="px-4 py-3 text-left text-sm font-bold w-[16%]">節次 / 時間</th>
+            `;
+            
+            for(let d = 1; d <= 5; d++) {
+                tableHTML += `<th class="px-4 py-3 text-center text-sm font-bold border-l border-white/20">${DAYS[d-1]}</th>`;
+            }
+            tableHTML += `</tr></thead><tbody class="divide-y divide-gray-100">`;
+
+            PERIODS.forEach(period => {
+                if (period.isBreak) {
+                    tableHTML += `
+                        <tr class="bg-gray-100/60">
+                            <td class="px-4 py-2 text-sm text-gray-500 font-medium whitespace-nowrap">
+                                ${period.name} <span class="text-xs opacity-60 block">${period.time}</span>
+                            </td>
+                            <td colspan="5" class="px-4 py-2 text-center text-sm text-gray-400 font-medium" style="background-image: repeating-linear-gradient(45deg, #f3f4f6 0, #f3f4f6 4px, transparent 4px, transparent 8px);">
+                                休息時間
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    tableHTML += `<tr class="hover:bg-brand-lightred/30 transition-colors">`;
+                    tableHTML += `
+                        <td class="px-4 py-3 text-sm text-gray-700 font-medium whitespace-nowrap bg-gray-50/50">
+                            ${period.name} <span class="text-xs text-gray-400 block">${period.time}</span>
+                        </td>
+                    `;
+                    
+                    for(let d = 1; d <= 5; d++) {
+                        // In imported data, we assume missing key means free if not explicitly busy/leave
+                        const status = scheduleData[d][teacher.id]?.[period.id] || 'free';
+                        let cellStyle = '';
+                        let cellContent = '';
+
+                        switch(status) {
+                            case 'free':
+                                cellStyle = 'bg-green-50 text-green-700';
+                                cellContent = '空堂';
+                                break;
+                            case 'busy':
+                                cellStyle = 'bg-brand-lightred text-brand-darkred font-medium';
+                                cellContent = '有課';
+                                break;
+                            case 'leave':
+                                cellStyle = 'bg-yellow-100 text-yellow-800';
+                                cellContent = '請假';
+                                break;
+                            case 'subbing':
+                                cellStyle = 'bg-blue-50 text-blue-700';
+                                cellContent = '代課';
+                                break;
+                            default:
+                                cellStyle = 'text-gray-400';
+                                cellContent = '-';
+                        }
+                        
+                        tableHTML += `
+                            <td class="px-4 py-3 text-center border-l border-gray-100 ${cellStyle}">
+                                <div class="inline-block px-3 py-1 rounded-md text-sm">${cellContent}</div>
+                            </td>
+                        `;
+                    }
+                    tableHTML += `</tr>`;
+                }
+            });
+
+            tableHTML += `</tbody></table>`;
+            container.innerHTML = tableHTML;
+        }
+
+        function closeTeacherView() {
+            const teacherView = document.getElementById('teacher-view');
+            const periodView = document.getElementById('period-view');
+            
+            if (teacherView && !teacherView.classList.contains('hidden')) {
+                teacherView.classList.add('hidden');
+                periodView.classList.remove('hidden');
+            }
+        }
+
+        // Initialize App
+        window.onload = () => {
+            generateSchedule();
+            setupDayTabs();
+            renderPeriods();
+            updateHeaderDisplay();
+            setupSearch(); // 初始化搜尋列
+        };
+
+    </script>
 </body>
 </html>
