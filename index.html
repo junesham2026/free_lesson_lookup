@@ -167,7 +167,7 @@
                     <h2 class="text-sm md:text-base font-bold text-brand-darkred">一週時間表選取網格 (7 × 18)</h2>
                 </div>
                 <div id="absent-status-banner" class="text-xs font-semibold text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full hidden">
-                    請選取紅色標記之「需代」節次
+                    請選取紅色標記之缺席老師課堂節次
                 </div>
             </div>
 
@@ -261,14 +261,14 @@
                         <!-- Most Free -->
                         <div class="bg-red-50/60 rounded-lg p-2 border border-red-100 flex flex-col justify-between">
                             <div class="text-[10px] font-bold text-red-800">當日最多空節</div>
-                            <div id="stat-most-free" class="text-xs font-bold text-slate-800 truncate">載入中...</div>
+                            <div id="stat-most-free" class="text-xs font-bold text-slate-800">載入中...</div>
                             <div class="text-[9px] text-slate-400">時間充裕</div>
                         </div>
 
                         <!-- Least Free -->
                         <div class="bg-slate-50 rounded-lg p-2 border border-slate-200 flex flex-col justify-between">
                             <div class="text-[10px] font-bold text-slate-700">當日最少空節</div>
-                            <div id="stat-least-free" class="text-xs font-bold text-slate-800 truncate">載入中...</div>
+                            <div id="stat-least-free" class="text-xs font-bold text-slate-800">載入中...</div>
                             <div class="text-[9px] text-slate-400">教學繁重</div>
                         </div>
 
@@ -280,7 +280,7 @@
                                 </svg>
                                 推薦代課老師
                             </div>
-                            <div id="stat-best-sub" class="text-xs font-bold text-white truncate">計算中...</div>
+                            <div id="stat-best-sub" class="text-xs font-bold text-white">計算中...</div>
                             <div class="text-[9px] text-white/80 truncate">合資格/請假多/空節多</div>
                         </div>
                     </div>
@@ -600,19 +600,10 @@
                 targetBadge.classList.add('hidden');
             }
 
-            if (pObj.isBreak) {
-                container.innerHTML = `
-                    <div class="col-span-full py-10 text-center text-slate-400 text-xs">
-                        小息/午膳時間，不設空堂檢核
-                    </div>
-                `;
-                document.getElementById('free-teacher-count').innerText = '0';
-                return;
-            }
-
-            // Filter free teachers and apply period role eligibility
+            // Filter free teachers and apply period role eligibility (allows duty/break coverage too)
             const freeTeachers = TEACHERS_LIST.filter(t => {
-                const isFree = dayData[t.id] && dayData[t.id].periods[pId] === 'free';
+                const status = dayData[t.id] && dayData[t.id].periods[pId];
+                const isFree = (status === 'free' || status === '' || status === '吉');
                 if (!isFree) return false;
                 return isEligibleForSub(t, pObj, selectedDayIndex);
             });
@@ -622,7 +613,7 @@
             if (freeTeachers.length === 0) {
                 container.innerHTML = `
                     <div class="col-span-full py-10 text-center text-slate-400 text-xs">
-                        當前節次無符合資格之空堂老師
+                        當前節次無符合資格之空堂/無當值老師
                     </div>
                 `;
                 return;
@@ -631,7 +622,7 @@
             freeTeachers.forEach(t => {
                 const tMeta = dayData[t.id];
                 const card = document.createElement('div');
-                card.className = 'teacher-card bg-white rounded-lg p-2.5 border border-slate-200 shadow-2xs flex flex-col justify-between hover:border-brand-red transition-all';
+                card.className = 'teacher-card bg-white rounded-xl p-3 border border-slate-200 shadow-xs flex flex-col justify-between hover:border-brand-red transition-all cursor-pointer group hover:shadow-md';
 
                 const subjectsTags = t.subjects.map(s => `<span class="bg-red-50 text-brand-darkred text-[10px] px-1.5 py-0.5 rounded border border-red-100 font-medium">${s}</span>`).join(' ');
 
@@ -649,8 +640,8 @@
 
                 card.innerHTML = `
                     <div>
-                        <div class="flex justify-between items-start mb-1 gap-1">
-                            <h4 class="font-bold text-slate-800 text-sm">${t.name}</h4>
+                        <div class="flex justify-between items-start mb-1.5 gap-1">
+                            <h4 class="font-bold text-slate-800 text-sm group-hover:text-brand-red transition-colors">${t.name}</h4>
                             <div class="flex gap-1 items-center">
                                 ${hrBadge}
                                 ${roleBadge}
@@ -664,14 +655,18 @@
                     <div class="pt-2 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-500">
                         <div class="flex gap-2 font-medium">
                             <span title="累計請假節數" class="text-red-600">假: ${tMeta.totalLeave}</span>
-                            <span title="累計代課節數" class="text-blue-600">代: ${tMeta.totalSub}</span>
+                            <span title="累計代課節數" class="text-blue-600 font-bold">代: ${tMeta.totalSub}</span>
                         </div>
-                        <button onclick="assignSubstitution('${t.id}', '${t.name}')" class="bg-brand-red hover:bg-brand-darkred text-white px-2 py-1 rounded text-[10px] font-bold transition-all shadow-xs">
-                            指派代課
+                        <button onclick="event.stopPropagation(); assignSubstitution('${t.id}', '${t.name}')" class="bg-brand-red hover:bg-brand-darkred text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+                            </svg>
+                            <span>指派代課</span>
                         </button>
                     </div>
                 `;
 
+                card.onclick = () => assignSubstitution(t.id, t.name);
                 container.appendChild(card);
             });
         }
@@ -706,9 +701,35 @@
             const maxFree = teacherFreeCounts[0];
             const minFree = teacherFreeCounts[teacherFreeCounts.length - 1];
 
-            document.getElementById('stat-most-free').innerText = maxFree ? `${maxFree.teacher.name} (${maxFree.freeCount}空節)` : '-';
-            document.getElementById('stat-least-free').innerText = minFree ? `${minFree.teacher.name} (${minFree.freeCount}空節)` : '-';
+            // 1. 當日最多空節老師 (附指派按鈕)
+            if (maxFree) {
+                document.getElementById('stat-most-free').innerHTML = `
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="truncate font-bold text-slate-800 text-xs" title="${maxFree.teacher.name}">${maxFree.teacher.name} (${maxFree.freeCount}空節)</span>
+                        <button onclick="assignSubstitution('${maxFree.teacher.id}', '${maxFree.teacher.name}')" class="bg-brand-red hover:bg-brand-darkred text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs shrink-0 transition-all flex items-center gap-0.5">
+                            <span>＋指派</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                document.getElementById('stat-most-free').innerText = '-';
+            }
 
+            // 2. 當日最少空節老師 (附指派按鈕)
+            if (minFree) {
+                document.getElementById('stat-least-free').innerHTML = `
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="truncate font-bold text-slate-800 text-xs" title="${minFree.teacher.name}">${minFree.teacher.name} (${minFree.freeCount}空節)</span>
+                        <button onclick="assignSubstitution('${minFree.teacher.id}', '${minFree.teacher.name}')" class="bg-slate-700 hover:bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs shrink-0 transition-all flex items-center gap-0.5">
+                            <span>＋指派</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                document.getElementById('stat-least-free').innerText = '-';
+            }
+
+            // 3. 最佳推薦代課老師 (附指派按鈕)
             const candidateSubs = teacherFreeCounts.filter(item => item.isCandidate);
 
             if (candidateSubs.length > 0) {
@@ -719,7 +740,14 @@
                 });
 
                 const bestCandidate = candidateSubs[0];
-                document.getElementById('stat-best-sub').innerText = `${bestCandidate.teacher.name} (${bestCandidate.teacher.role || '教師'})`;
+                document.getElementById('stat-best-sub').innerHTML = `
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="truncate font-bold text-white text-xs" title="${bestCandidate.teacher.name}">${bestCandidate.teacher.name} (${bestCandidate.teacher.role || '教師'})</span>
+                        <button onclick="assignSubstitution('${bestCandidate.teacher.id}', '${bestCandidate.teacher.name}')" class="bg-white text-brand-red hover:bg-yellow-300 hover:text-slate-900 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-xs shrink-0 transition-all flex items-center gap-0.5">
+                            <span>＋指派</span>
+                        </button>
+                    </div>
+                `;
             } else {
                 document.getElementById('stat-best-sub').innerText = '無符合資格空堂老師';
             }
@@ -807,11 +835,11 @@
 
                         tdCell.className = tileClasses;
 
-                        // Checkbox tile style content
+                        // Checkbox tile style content with actual class/subject name
                         if (isSelected) {
-                            tdCell.innerHTML = `<span class="inline-flex items-center justify-center w-4 h-4 bg-white text-brand-red rounded text-[10px] font-bold shadow-xs">✓</span>`;
+                            tdCell.innerHTML = `<span class="inline-flex items-center justify-center w-4 h-4 bg-white text-brand-red rounded text-[10px] font-bold shadow-xs">✓</span>` + (isAbsentClass ? `<div class="text-[9px] font-bold leading-tight mt-0.5 truncate text-white">${absentSubInfo}</div>` : '');
                         } else if (isAbsentClass) {
-                            tdCell.innerHTML = `<span class="text-[10px] font-bold text-red-700">需代</span>`;
+                            tdCell.innerHTML = `<div class="text-[10px] font-bold text-red-700 leading-tight truncate px-0.5" title="${absentSubInfo}">${absentSubInfo}</div>`;
                         } else {
                             tdCell.innerHTML = `<span class="inline-block w-3.5 h-3.5 border border-slate-300 rounded bg-slate-50/50"></span>`;
                         }
