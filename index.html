@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>滬江小學空節老師搜尋器</title>
+    <title>滬江小學空堂老師搜尋器</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- SheetJS for Excel Reading and Exporting -->
@@ -382,50 +382,50 @@
 
         // Teachers Data initialized clean with roles (副校, 主任, 教師)
         let TEACHERS_LIST = [
-            { id: 't1', name: '何曉欣', short: '曉', role: '主任', subjects: ['1A中文', '1A科學'] },
-            { id: 't2', name: '賴樂昀', short: '賴', role: '副校', subjects: ['1B英文', '5C英文'] },
-            { id: 't3', name: '趙慧穎', short: '趙', role: '主任', subjects: ['1C中文', '3B視藝'] },
-            { id: 't4', name: '歐陽培森', short: '森', role: '主任', subjects: ['1D數學', '4D視藝'] },
+            { id: 't1', name: '何曉欣', short: '曉', role: '教師', subjects: ['1A中文', '1A科學'] },
+            { id: 't2', name: '賴樂昀', short: '賴', role: '教師', subjects: ['1B英文', '5C英文'] },
+            { id: 't3', name: '趙慧穎', short: '趙', role: '教師', subjects: ['1C中文', '3B視藝'] },
+            { id: 't4', name: '歐陽培森', short: '森', role: '教師', subjects: ['1D數學', '4D視藝'] },
             { id: 't5', name: '李紅', short: '紅', role: '教師', subjects: ['2A數學', '5A科學'] },
             { id: 't6', name: '何嘉慧', short: '何', role: '教師', subjects: ['2B英閱', '4B人文'] },
             { id: 't7', name: '胡詠敏', short: '胡', role: '教師', subjects: ['2C數學'] },
             { id: 't8', name: '周淑敏', short: '淑', role: '教師', subjects: ['2D英文', '5D英文'] },
             { id: 't9', name: '黃春萍', short: '萍', role: '教師', subjects: ['3A數學', '2A音樂'] },
             { id: 't10', name: '黃慧雯', short: '慧', role: '教師', subjects: ['3B中文', '4A視藝'] },
-            { id: 't11', name: '江思蔚', short: '江', role: '主任', subjects: ['3C中文', '3C英文'] },
+            { id: 't11', name: '江思蔚', short: '江', role: '教師', subjects: ['3C中文', '3C英文'] },
             { id: 't12', name: '高啟然', short: '高', role: '教師', subjects: ['3D數學', '3D電腦'] },
             { id: 't13', name: '林海寧', short: '寧', role: '教師', subjects: ['4A數學', '1B中文'] },
             { id: 't14', name: '郭嘉慧', short: '嘉', role: '教師', subjects: ['4B英文', '3D視藝'] },
             { id: 't15', name: '葉鍶泳', short: '泳', role: '教師', subjects: ['4C英文', '1A科學'] },
             { id: 't16', name: '梁碧珊', short: '珊', role: '教師', subjects: ['4D英文'] },
-            { id: 't17', name: '曾樂欣', short: '樂', role: '主任', subjects: ['5A英文', '5A科學'] },
+            { id: 't17', name: '曾樂欣', short: '樂', role: '教師', subjects: ['5A英文', '5A科學'] },
             { id: 't18', name: '黃佩柔', short: '佩', role: '教師', subjects: ['5B數學', '5B人文'] },
-            { id: 't19', name: '陳耀珽', short: '珽', role: '副校', subjects: ['5C中文', '5C體育'] },
+            { id: 't19', name: '陳耀珽', short: '珽', role: '教師', subjects: ['5C中文', '5C體育'] },
             { id: 't20', name: '梁慧儀', short: '儀', role: '教師', subjects: ['5D中文', '5D人文'] },
             { id: 't21', name: '馬素倩', short: '馬', role: '教師', subjects: ['6A英文', '6A普話'] },
             { id: 't22', name: '程美彬', short: '程', role: '教師', subjects: ['6B圖書', '6B常識'] },
             { id: 't23', name: '莊美薇', short: '莊', role: '教師', subjects: ['6C英文', '3C英文'] },
-            { id: 't24', name: '鄭彥莉', short: '莉', role: '教師', subjects: ['6D中文', '5D人文'] },
+            { id: 't24', name: '鄭彥莉', short: '莉', role: '主任', subjects: ['6D中文', '5D人文'] },
             { id: 't25', name: '蔡千才', short: '蔡', role: '教師', subjects: ['2A中文', '6A普話'] },
             { id: 't26', name: '張文舒', short: '舒', role: '教師', subjects: ['2B中文', '5B中文'] },
             { id: 't27', name: '馬芷悠', short: '悠', role: '教師', subjects: ['1B音樂'] },
-            { id: 't28', name: '鍾寶儀', short: '寶', role: '主任', subjects: ['2A中文', '2A普話'] },
+            { id: 't28', name: '鍾寶儀', short: '寶', role: '教師', subjects: ['2A中文', '2A普話'] },
             { id: 't29', name: '李燁', short: '燁', role: '教師', subjects: ['3B常識'] },
             { id: 't30', name: '李寶裕', short: '裕', role: '教師', subjects: ['3A中文'] },
             { id: 't31', name: '吳嘉駿', short: '吳', role: '教師', subjects: ['1D體育'] },
             { id: 't32', name: '郭健嬣', short: '健', role: '教師', subjects: ['6B圖書'] },
             { id: 't33', name: '萬至祥', short: '萬', role: '教師', subjects: ['2B數學'] },
             { id: 't34', name: '李燕貞', short: '燕', role: '教師', subjects: ['3B普話'] },
-            { id: 't35', name: '黃梓晉', short: '梓', role: '教師', subjects: ['5B中文'] },
-            { id: 't36', name: '陳藹忻', short: '忻', role: '教師', subjects: ['6C中文'] },
-            { id: 't37', name: '沈美玉', short: '玉', role: '教師', subjects: ['2D視藝'] },
-            { id: 't38', name: '蕭燕唐', short: '蕭', role: '教師', subjects: ['3A數學'] },
-            { id: 't39', name: '邢芙蓉', short: '邢', role: '教師', subjects: ['4B科學'] },
-            { id: 't40', name: '黃惠蘭', short: '黃', role: '教師', subjects: ['4C中文'] },
+            { id: 't35', name: '黃梓晉', short: '梓', role: '主任', subjects: ['5B中文'] },
+            { id: 't36', name: '陳藹忻', short: '忻', role: '主任', subjects: ['6C中文'] },
+            { id: 't37', name: '沈美玉', short: '玉', role: '主任', subjects: ['2D視藝'] },
+            { id: 't38', name: '蕭燕唐', short: '蕭', role: '主任', subjects: ['3A數學'] },
+            { id: 't39', name: '邢芙蓉', short: '邢', role: '主任', subjects: ['4B科學'] },
+            { id: 't40', name: '黃惠蘭', short: '黃', role: '主任', subjects: ['4C中文'] },
             { id: 't41', name: '郭俊傑', short: '俊', role: '主任', subjects: ['6D數學'] },
-            { id: 't42', name: '魏美琪', short: '琪', role: '教師', subjects: ['3B數學'] },
-            { id: 't43', name: '黃錦蘭', short: '錦', role: '教師', subjects: ['4A英文'] },
-            { id: 't44', name: '羅筱彤', short: '羅', role: '教師', subjects: ['4D電腦'] },
+            { id: 't42', name: '魏美琪', short: '琪', role: '主任', subjects: ['3B數學'] },
+            { id: 't43', name: '黃錦蘭', short: '錦', role: '主任', subjects: ['4A英文'] },
+            { id: 't44', name: '羅筱彤', short: '羅', role: '副校', subjects: ['4D電腦'] },
             { id: 't45', name: '袁潔儀', short: '袁', role: '副校', subjects: ['6A中文'] }
         ];
 
